@@ -35,6 +35,39 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@main
+        # --- 开始插入清理空间的代码 ---
+    - name: Free up disk space manually
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        # 显示清理前的空间情况
+        echo "Disk space before cleanup:"
+        df -hT
+
+        # 1. 删除巨大的预装软件包和工具链
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        
+        # 2. 清理 Docker 镜像 (这通常能释放好几 GB)
+        sudo docker image prune --all --force
+
+        # 3. 清理不需要的 apt 缓存和包
+        sudo -E apt-get -q -y purge azure-cli ghc* zulu* hhvm llvm* firefox google-chrome-stable microsoft-edge-stable dotnet* powershell* openjdk* mysql* php* mongodb* dotnet* moby* || true
+        sudo -E apt-get -q -y autoremove --purge
+        sudo -E apt-get -q -y clean
+
+        # 4. (可选) 删除巨大的交换文件（如果存在）
+        # 某些环境可能仍有预设的 swapfile，尝试删除它
+        sudo swapoff -a || true
+        sudo rm -f /swapfile || true
+        sudo rm -f /mnt/swapfile || true
+
+        # 显示清理后的空间情况
+        echo "Disk space after cleanup:"
+        df -hT
+    # --- 插入结束 ---
 
     - name: Initialization environment
       env:
